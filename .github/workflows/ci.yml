@@ -50,7 +50,8 @@ jobs:
       run: |
         echo "CI setup complete. Add pytest or HTTP tests here."
     
-    - name: Run tests
+    - name: Run tests explicitly on test_main.py
       run: |
         pip install pytest
-        pytest
+        pytest test_main.py
+
