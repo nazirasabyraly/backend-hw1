@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FastAPI Test Frontend</title>
+</head>
+<body>
+  <h1>Item Manager</h1>
+
+  <h2>Create Item</h2>
+  <input id="create-id" placeholder="ID" type="number">
+  <input id="create-name" placeholder="Name">
+  <input id="create-desc" placeholder="Description">
+  <button onclick="createItem()">Create</button>
+
+  <h2>Get All Items</h2>
+  <button onclick="getItems()">Load Items</button>
+  <ul id="items-list"></ul>
+
+  <h2>Delete Item</h2>
+  <input id="delete-id" placeholder="ID" type="number">
+  <button onclick="deleteItem()">Delete</button>
+
+  <script>
+    const API_URL = "http://127.0.0.1:8000/items/";
+
+    async function createItem() {
+      const id = parseInt(document.getElementById("create-id").value);
+      const name = document.getElementById("create-name").value;
+      const description = document.getElementById("create-desc").value;
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name, description })
+      });
+      const data = await res.json();
+      alert(JSON.stringify(data));
+    }
+
+    async function getItems() {
+      const res = await fetch(API_URL);
+      const items = await res.json();
+      const list = document.getElementById("items-list");
+      list.innerHTML = "";
+      items.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = `${item.id}: ${item.name} - ${item.description}`;
+        list.appendChild(li);
+      });
+    }
+
+    async function deleteItem() {
+      const id = document.getElementById("delete-id").value;
+      const res = await fetch(API_URL + id, {
+        method: "DELETE"
+      });
+      const data = await res.json();
+      alert(JSON.stringify(data));
+    }
+  </script>
+</body>
+</html>
