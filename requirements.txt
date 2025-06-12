@@ -13,3 +13,4 @@ python-dotenv
 redis[async]
 celery[redis]
 openai
+alembic

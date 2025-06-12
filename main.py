@@ -6,7 +6,7 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.future import select
-
+from assistant.openai_assistant import send_message_to_assistant
 from dotenv import load_dotenv
 import os
 
@@ -43,10 +43,10 @@ class Item(BaseModel):
 # FastAPI app
 app = FastAPI()
 
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+@app.post("/chat")
+async def chat_with_assistant(prompt: str):
+    reply = send_message_to_assistant(prompt)
+    return {"reply": reply}
 
 @app.post("/items/", response_model=Item)
 async def create_item(item: Item, session: AsyncSession = Depends(get_session)):

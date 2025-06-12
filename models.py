@@ -1,7 +1,5 @@
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from db.base import Base
 
 class Item(Base):
     __tablename__ = "items"
