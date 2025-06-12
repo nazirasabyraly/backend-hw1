@@ -1,12 +1,12 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
-
+from assistant.info_agent import info_agent
+from assistant.openai_assistant import ask_openai
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.future import select
-from assistant.openai_assistant import send_message_to_assistant
 from dotenv import load_dotenv
 import os
 
@@ -25,12 +25,20 @@ async def get_session():
         yield session
 
 # SQLAlchemy model
+
+class ChatRequest(BaseModel):
+    messages: List[str]  # Список сообщений
+    strategy: str = "alternate" 
+
 class ItemModel(Base):
     __tablename__ = "items"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     description = Column(String, nullable=True)
 
+class AskRequest(BaseModel):
+    prompt: str
+    agent: str = "main"
 # Pydantic model
 class Item(BaseModel):
     id: int
@@ -43,10 +51,31 @@ class Item(BaseModel):
 # FastAPI app
 app = FastAPI()
 
+@app.post("/ask")
+def ask(request: AskRequest):
+    if request.agent == "info":
+        answer = info_agent(request.prompt)
+    else:
+        answer = ask_openai(request.prompt)
+    return {"response": answer}
+
+
 @app.post("/chat")
-async def chat_with_assistant(prompt: str):
-    reply = send_message_to_assistant(prompt)
-    return {"reply": reply}
+async def chat_endpoint(request: ChatRequest):
+    response_log = []
+    agents = {"main": ask_openai, "info": info_agent}
+    
+    # чередование агентов
+    for idx, message in enumerate(request.messages):
+        if request.strategy == "alternate":
+            agent = ask_openai if idx % 2 == 0 else info_agent
+        else:
+            agent = agents.get(request.strategy, ask_openai)
+
+        reply = agent(message)
+        response_log.append({"agent": "info" if agent == info_agent else "main", "response": reply})
+
+    return {"chat": response_log}
 
 @app.post("/items/", response_model=Item)
 async def create_item(item: Item, session: AsyncSession = Depends(get_session)):
