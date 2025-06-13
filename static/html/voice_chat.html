@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Chat with AI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .recording {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .transcription {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .response {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+        }
+        .mic-icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Voice Chat with AI</h1>
+        <div class="controls">
+            <button id="recordButton">
+                <svg class="mic-icon" viewBox="0 0 24 24">
+                    <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"/>
+                </svg>
+                Start Recording
+            </button>
+            <button id="stopButton" disabled>Stop Recording</button>
+        </div>
+        <div id="status" class="status"></div>
+        <div class="transcription">
+            <h3>Your Message:</h3>
+            <p id="transcriptionText">No message recorded yet.</p>
+        </div>
+        <div class="response">
+            <h3>AI Response:</h3>
+            <p id="responseText">Waiting for your message...</p>
+            <audio id="responseAudio" controls style="display: none;"></audio>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        const recordButton = document.getElementById('recordButton');
+        const stopButton = document.getElementById('stopButton');
+        const status = document.getElementById('status');
+        const transcriptionText = document.getElementById('transcriptionText');
+        const responseText = document.getElementById('responseText');
+        const responseAudio = document.getElementById('responseAudio');
+
+        recordButton.onclick = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const formData = new FormData();
+                    formData.append('audio_file', audioBlob, 'recording.wav');
+
+                    try {
+                        status.textContent = 'Processing...';
+                        const response = await fetch('/voice-chat', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            const audioBlob = await response.blob();
+                            const audioUrl = URL.createObjectURL(audioBlob);
+                            responseAudio.src = audioUrl;
+                            responseAudio.style.display = 'block';
+                            responseText.textContent = 'Playing AI response...';
+                            responseAudio.play();
+                        } else {
+                            throw new Error('Error processing audio');
+                        }
+                    } catch (error) {
+                        status.textContent = `Error: ${error.message}`;
+                    }
+                };
+
+                mediaRecorder.start();
+                recordButton.disabled = true;
+                stopButton.disabled = false;
+                status.textContent = 'Recording...';
+                status.className = 'status recording';
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+            }
+        };
+
+        stopButton.onclick = () => {
+            mediaRecorder.stop();
+            recordButton.disabled = false;
+            stopButton.disabled = true;
+            status.textContent = 'Processing your message...';
+            status.className = 'status';
+        };
+    </script>
+</body>
+</html> 
